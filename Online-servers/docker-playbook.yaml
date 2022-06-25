@@ -1,0 +1,38 @@
+- hosts: master
+  become: yes
+  vars:
+      username: salim
+  tasks:
+    - name: Install list of packages
+      apt:
+        pkg:
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        update_cache: yes
+
+    - name: Add Docker’s official GPG key-1
+      shell: mkdir -p /etc/apt/keyrings && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg --y
+      args:
+        warn: no
+
+
+    - name: Add Docker's official GPG key-2
+      ansible.builtin.shell: |
+        echo \
+        "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+         $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+    - name: Install Docker Engine
+      apt:
+        pkg:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-compose-plugin
+        update_cache: yes      
+
+    - name: Add user to docker group 
+      ansible.builtin.shell: usermod -aG docker "{{ username }}"
+        

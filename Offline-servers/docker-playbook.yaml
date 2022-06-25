@@ -1,0 +1,91 @@
+- hosts: master
+  become: yes
+  vars:
+      username: salim
+
+  tasks:
+    - name: Install containerd deb
+      apt:  
+        deb:  /home/{{ username }}/docker/containerd.io_1.6.6-1_amd64.deb
+
+    - name: Install docker-ce-cli deb
+      apt:  
+        deb:  /home/{{ username }}/docker/docker-ce-cli_20.10.9~3-0~ubuntu-focal_amd64.deb
+
+    - name: Install docker-ce deb
+      apt:  
+        deb:  /home/{{ username }}/docker/docker-ce_20.10.9~3-0~ubuntu-focal_amd64.deb
+
+    - name: Install docker-ce-rootless deb
+      apt:  
+        deb:  /home/{{ username }}/docker/docker-ce-rootless-extras_20.10.9~3-0~ubuntu-focal_amd64.deb
+
+    - name: Install docker-compose-plugin deb
+      apt:  
+        deb:  /home/{{ username }}/docker/docker-compose-plugin_2.6.0~ubuntu-focal_amd64.deb
+
+    - name: Install docker-scan-plugin deb
+      apt:  
+        deb:  /home/{{ username }}/docker/docker-scan-plugin_0.9.0~ubuntu-focal_amd64.deb
+
+    - name: Add the user appending the group 'docker'
+      ansible.builtin.user:
+        name: "{{ username }}"
+        groups: docker
+        append: yes
+
+    - name: Extract cri-dockerd-0.2.1.amd64.tgz into /home/{{ username }}/docker/
+      ansible.builtin.unarchive:
+       src:  /home/{{ username }}/docker/cri-dockerd-0.2.1.amd64.tgz
+       dest: /home/{{ username }}/docker/
+       remote_src: yes
+
+    - name: Copy cri-dockerd to /usr/local/bin/ file 
+      ansible.builtin.copy:
+        src: /home/{{ username }}/docker/cri-dockerd/cri-dockerd
+        dest: /usr/local/bin/
+        mode: '0755'
+        remote_src: yes
+
+    - name: Copy cri-docker.socket to /etc/systemd/system/ file 
+      ansible.builtin.copy:
+        src: /home/{{ username }}/docker/cri-docker.socket
+        dest: /etc/systemd/system/
+        remote_src: yes
+
+    - name: Copy cri-docker.service to /etc/systemd/system/ file 
+      ansible.builtin.copy:
+        src: /home/{{ username }}/docker/cri-docker.service
+        dest: /etc/systemd/system/
+        remote_src: yes
+
+    - name: sed-1 command
+      ansible.builtin.shell: sed -i -e 's,/usr/bin/cri-dockerd,/usr/local/bin/cri-dockerd,' /etc/systemd/system/cri-docker.service
+
+    - name: Force systemd to reread configs
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: Enable cri-docker.service
+      ansible.builtin.systemd:  
+        enabled: yes
+        name: cri-docker.service
+
+    - name: Enable and start cri-docker.socket
+      ansible.builtin.systemd:
+        state: started
+        enabled: yes
+        name: cri-docker.socket
+
+    - name: Load the images
+      ansible.builtin.shell: |
+        docker load < /home/{{ username }}/images/apiserver.tar
+        docker load < /home/{{ username }}/images/controller.tar
+        docker load < /home/{{ username }}/images/scheduler.tar
+        docker load < /home/{{ username }}/images/proxy.tar
+        docker load < /home/{{ username }}/images/pause1.tar
+        docker load < /home/{{ username }}/images/pause2.tar
+        docker load < /home/{{ username }}/images/etcd.tar
+        docker load < /home/{{ username }}/images/dns.tar
+        docker load < /home/{{ username }}/images/flannel.tar
+        docker load < /home/{{ username }}/images/flannelcni.tar

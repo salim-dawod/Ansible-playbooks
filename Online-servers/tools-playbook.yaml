@@ -1,0 +1,211 @@
+- hosts: master
+  become: yes
+  vars:
+      username: salim
+
+  tasks:
+    - name: Create k8s-tools directory
+      file:
+        path: /home/{{ username }}/k8s-tools
+        state: directory
+
+    - name: Creates soc-conn directory
+      file:
+        path: /home/{{ username }}/soc-conn
+        state: directory
+
+    - name: Creates flannel directory
+      file:
+        path: /home/{{ username }}/flannel
+        state: directory
+
+    - name: Creates docker images directory
+      file:
+        path: /home/{{ username }}/images
+        state: directory
+
+    - name: Download cni plugin deb
+      get_url:
+        url: https://github.com/containernetworking/plugins/releases/download/v0.8.2/cni-plugins-linux-amd64-v0.8.2.tgz
+        dest: /home/{{ username }}/k8s-tools/cni-plugins-linux-amd64-v0.8.2.tgz
+        timeout: 3600
+
+    - name: Download cricl 
+      get_url:
+        url: https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.22.0/crictl-v1.22.0-linux-amd64.tar.gz
+        dest: /home/{{ username }}/k8s-tools/crictl-v1.22.0-linux-amd64.tar.gz
+        timeout: 3600
+
+    - name: Download kubeadm
+      get_url:
+        url: https://storage.googleapis.com/kubernetes-release/release/v1.24.1/bin/linux/amd64/kubeadm
+        dest: /home/{{ username }}/k8s-tools/kubeadm
+        timeout: 3600
+
+    - name: Download kubelet
+      get_url:
+        url: https://storage.googleapis.com/kubernetes-release/release/v1.24.1/bin/linux/amd64/kubelet
+        dest: /home/{{ username }}/k8s-tools/kubelet
+        timeout: 3600
+
+    - name: Download kubectl
+      get_url:
+        url: https://storage.googleapis.com/kubernetes-release/release/v1.24.1/bin/linux/amd64/kubectl
+        dest: /home/{{ username }}/k8s-tools/kubectl
+        timeout: 3600
+
+    - name: Download Kubelet service file
+      get_url:
+        url: https://raw.githubusercontent.com/kubernetes/release/v0.4.0/cmd/kubepkg/templates/latest/deb/kubelet/lib/systemd/system/kubelet.service
+        dest: /home/{{ username }}/k8s-tools/kubelet.service
+    - name: Download kubeadm file
+      get_url:
+        url: https://raw.githubusercontent.com/kubernetes/release/v0.4.0/cmd/kubepkg/templates/latest/deb/kubeadm/10-kubeadm.conf
+        dest: /home/{{ username }}/k8s-tools/10-kubeadm.conf
+
+    - name: Download socat 
+      get_url:
+        url: http://ftp.de.debian.org/debian/pool/main/s/socat/socat_1.7.3.1-2+deb9u1_amd64.deb
+        dest: /home/{{ username }}/soc-conn/socat_1.7.3.1-2+deb9u1_amd64.deb
+        timeout: 3600
+
+    - name: Download conntrack
+      get_url:
+        url: http://archive.ubuntu.com/ubuntu/pool/main/c/conntrack-tools/conntrack_1.4.5-2_amd64.deb
+        dest: /home/{{ username }}/soc-conn/conntrack_1.4.5-2_amd64.deb
+        timeout: 3600
+
+    - name: Download flannel 
+      get_url:
+        url: https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+        dest: /home/{{ username }}/flannel/kube-flannel.yml
+
+    - name: Install pip3 
+      apt:
+        name: python3-pip
+        state: latest
+        update_cache: yes
+
+    - name: Install Docker Module for Python
+      pip:
+        name: docker
+
+    - name: Pull an api image
+      community.docker.docker_image:
+        name: k8s.gcr.io/kube-apiserver:v1.24.1
+        source: pull  
+
+    - name: Pull a controller image
+      community.docker.docker_image:
+        name: k8s.gcr.io/kube-controller-manager:v1.24.1
+        source: pull
+
+    - name: Pull a scheduler image
+      community.docker.docker_image:
+        name: k8s.gcr.io/kube-scheduler:v1.24.1
+        source: pull 
+
+    - name: Pull a proxy image
+      community.docker.docker_image:
+        name: k8s.gcr.io/kube-proxy:v1.24.1
+        source: pull 
+
+    - name: Pull a pause-1  image
+      community.docker.docker_image:
+        name: k8s.gcr.io/pause:3.7
+        source: pull 
+
+    - name: Pull a pause-2 image
+      community.docker.docker_image:
+        name: k8s.gcr.io/pause:3.6
+        source: pull 
+
+    - name: Pull an etcd image
+      community.docker.docker_image:
+        name: k8s.gcr.io/etcd:3.5.3-0
+        source: pull 
+
+    - name: Pull a coredns image
+      community.docker.docker_image:
+        name: k8s.gcr.io/coredns/coredns:v1.8.6
+        source: pull 
+
+    - name: Pull a flannel image
+      community.docker.docker_image:
+        name: rancher/mirrored-flannelcni-flannel:v0.18.1
+        source: pull 
+
+    - name: Pull a flannel-2 image
+      community.docker.docker_image:
+        name: rancher/mirrored-flannelcni-flannel-cni-plugin:v1.1.0
+        source: pull
+
+    - name: Archive flannelcni image
+      community.docker.docker_image:
+        name: rancher/mirrored-flannelcni-flannel-cni-plugin
+        tag: v1.1.0
+        archive_path: /home/{{ username }}/images/flannelcni.tar
+        source: local
+    
+    - name: Archive flannel image
+      community.docker.docker_image:
+        name: rancher/mirrored-flannelcni-flannel
+        tag: v0.18.1
+        archive_path: /home/{{ username }}/images/flannel.tar
+        source: local
+
+    - name: Archive coredns image
+      community.docker.docker_image:
+        name: k8s.gcr.io/coredns/coredns
+        tag: v1.8.6
+        archive_path: /home/{{ username }}/images/dns.tar
+        source: local
+
+    - name: Archive etcd image
+      community.docker.docker_image:
+        name: k8s.gcr.io/etcd
+        tag: 3.5.3-0
+        archive_path: /home/{{ username }}/images/etcd.tar
+        source: local
+
+    - name: Archive pause-2 image
+      community.docker.docker_image:
+        name: k8s.gcr.io/pause
+        tag: 3.6
+        archive_path: /home/{{ username }}/images/pause2.tar
+        source: local
+
+    - name: Archive pause-1 image
+      community.docker.docker_image:
+        name: k8s.gcr.io/pause
+        tag: 3.7
+        archive_path: /home/{{ username }}/images/pause1.tar
+        source: local
+
+    - name: Archive kube-proxy image
+      community.docker.docker_image:
+        name: k8s.gcr.io/kube-proxy
+        tag: v1.24.1
+        archive_path: /home/{{ username }}/images/proxy.tar
+        source: local
+
+    - name: Archive kube-scheduler image
+      community.docker.docker_image:
+        name: k8s.gcr.io/kube-scheduler
+        tag: v1.24.1
+        archive_path: /home/{{ username }}/images/scheduler.tar
+        source: local
+
+    - name: Archive kube-controller-manager image
+      community.docker.docker_image:
+        name: k8s.gcr.io/kube-controller-manager
+        tag: v1.24.1
+        archive_path: /home/{{ username }}/images/controller.tar
+        source: local
+
+    - name: Archive kube-apiserver image
+      community.docker.docker_image:
+        name: k8s.gcr.io/kube-apiserver
+        tag: v1.24.1
+        archive_path: /home/{{ username }}/images/apiserver.tar
+        source: local

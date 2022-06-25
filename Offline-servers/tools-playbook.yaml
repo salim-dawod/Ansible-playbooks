@@ -1,0 +1,110 @@
+- hosts: master
+  become: yes
+  vars:
+      username: salim
+
+  tasks:
+    - name: Creates opt/cni/bin directory
+      file:
+        path: /opt/cni/bin
+        state: directory
+
+    - name: Creates /usr/local/bin directory
+      file:
+        path: /usr/local/bin
+        state: directory
+
+    - name: Creates kubelet.service.d directory
+      file:
+        path: /etc/systemd/system/kubelet.service.d
+        state: directory
+
+    - name: Extract cni-plugins-linux-amd64-v0.8.2.tgz into /opt/cni/bin
+      ansible.builtin.unarchive:
+       src:  /home/{{ username }}/k8s-tools/cni-plugins-linux-amd64-v0.8.2.tgz
+       dest: /opt/cni/bin
+       remote_src: yes
+
+    - name: Extract crictl-v1.22.0-linux-amd64.tar.gz into /usr/local/bin/
+      ansible.builtin.unarchive:
+       src:  /home/{{ username }}/k8s-tools/crictl-v1.22.0-linux-amd64.tar.gz
+       dest: /usr/local/bin/
+       remote_src: yes
+
+    - name: Copy kubeadm file into /usr/bin
+      ansible.builtin.copy:
+        src: /home/{{ username }}/k8s-tools/kubeadm
+        dest: /usr/bin
+        mode: '0755'
+        remote_src: yes
+
+    - name: Copy kubectl file into /usr/bin
+      ansible.builtin.copy:
+        src: /home/{{ username }}/k8s-tools/kubectl
+        dest: /usr/bin
+        mode: '0755'
+        remote_src: yes
+
+    - name: Copy kubelet file into /usr/bin
+      ansible.builtin.copy:
+        src: /home/{{ username }}/k8s-tools/kubelet
+        dest: /usr/bin
+        mode: '0755'
+        remote_src: yes
+
+    - name: Copy kubelet file into usr/local/bin
+      ansible.builtin.copy:
+        src: /home/{{ username }}/k8s-tools/kubelet
+        dest: /usr/local/bin
+        mode: '0755'
+        remote_src: yes
+
+    - name: Copy kubectl file into usr/local/bin
+      ansible.builtin.copy:
+        src: /home/{{ username }}/k8s-tools/kubectl
+        dest: /usr/local/bin
+        mode: '0755'
+        remote_src: yes
+
+    - name: Copy kubeadm file into usr/local/bin
+      ansible.builtin.copy:
+        src: /home/{{ username }}/k8s-tools/kubeadm
+        dest: /usr/local/bin
+        mode: '0755'
+        remote_src: yes
+
+    - name: Copy kubelet.service file into /etc/systemd/system
+      ansible.builtin.copy:
+        src: /home/{{ username }}/k8s-tools/kubelet.service
+        dest: /etc/systemd/system
+        remote_src: yes
+
+    - name: sed-2 command
+      ansible.builtin.shell: sed -i -e 's,/usr/bin/kubelet,/usr/local/bin/kubelet,' /etc/systemd/system/kubelet.service
+
+    - name: Copy 10-kubeadm.conf file into /etc/systemd/system/kubelet.service.d/
+      ansible.builtin.copy:
+        src: /home/{{ username }}/k8s-tools/10-kubeadm.conf
+        dest: /etc/systemd/system/kubelet.service.d
+        remote_src: yes
+
+    - name: sed-3 command
+      ansible.builtin.shell: sed -i -e 's,/usr/bin/10-kubeadm.conf,/usr/local/bin/10-kubeadm.conf,' /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+
+    - name: Force systemd to reread configs
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: Enable and start kubelet
+      ansible.builtin.systemd:
+        state: started
+        enabled: yes
+        name: kubelet
+
+    - name: Install socat deb
+      apt:  
+        deb: /home/{{ username }}/soc-conn/socat_1.7.3.1-2+deb9u1_amd64.deb
+
+    - name: Install conntrack deb
+      apt:  
+        deb: /home/{{ username }}/soc-conn/conntrack_1.4.5-2_amd64.deb
